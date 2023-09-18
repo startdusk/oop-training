@@ -62,7 +62,8 @@ impl Grid {
             return Err(anyhow!("Invalid piece"));
         }
 
-        for row in (0..self.rows - 1).rev() {
+        // (0..self.rows).rev() 等价于 [0, self.rows-1).rev() 等价于 [self.rows-1, 0]
+        for row in (0..self.rows).rev() {
             if self.grid[row][column] == GirdPosition::EMPTY {
                 self.grid[row][column] = piece.clone();
                 return Ok(row);
