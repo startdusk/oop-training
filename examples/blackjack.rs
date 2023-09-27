@@ -1,5 +1,5 @@
 use rand::Rng;
-use std::{cmp::min, io::stdin};
+use std::{cell::RefCell, cmp::min, io::stdin, rc::Rc};
 // BlackJack 棋牌游戏游戏: 二十一点
 // 游戏介绍:
 // 21点又名黑杰克（Blackjack），起源于法国，已流传到世界各地，有着悠久的历史。
@@ -227,7 +227,7 @@ impl PlayerMakeMove for UserPlayer {
             return false;
         }
 
-        print!("Draw card? [y/n] ");
+        println!("Draw card? [y/n] ");
         let mut input = String::new();
         stdin().read_line(&mut input).unwrap();
         let input = input.trim();
@@ -276,13 +276,13 @@ impl PlayerMakeMove for Dealer {
 }
 
 pub struct GameRound {
-    player: UserPlayer, // 玩家
-    dealer: Dealer,     // 庄家
-    deck: Deck,         // 牌桌
+    player: Rc<RefCell<UserPlayer>>, // 玩家
+    dealer: Rc<RefCell<Dealer>>,     // 庄家
+    deck: Deck,                      // 牌桌
 }
 
 impl GameRound {
-    pub fn new(player: UserPlayer, dealer: Dealer, deck: Deck) -> Self {
+    pub fn new(player: Rc<RefCell<UserPlayer>>, dealer: Rc<RefCell<Dealer>>, deck: Deck) -> Self {
         Self {
             player,
             dealer,
@@ -291,63 +291,63 @@ impl GameRound {
     }
 
     pub fn player_has_money(&self) -> bool {
-        self.player.get_balance() > 0
+        self.player.borrow().get_balance() > 0
     }
 
     pub fn play(&mut self) {
         self.deck.shuffle();
-        if self.player.get_balance() <= 0 {
+        if self.player.borrow().get_balance() <= 0 {
             println!("Player has no more money =)");
             return;
         }
 
         let user_bet = self.get_bet_user();
-        self.player.place_bet(user_bet);
+        self.player.borrow_mut().place_bet(user_bet);
         self.deal_initial_cards();
 
         // User makes moves
-        while self.player.make_move() {
+        while self.player.borrow_mut().make_move() {
             let drawn_card = self.deck.draw();
             let drawn_card_clone = drawn_card.clone();
             println!("Player draws ({} {})", drawn_card.suit, drawn_card.value);
-            self.player.add_card(drawn_card_clone);
-            println!("Player score {}", self.player.get_hand().score);
+            self.player.borrow_mut().add_card(drawn_card_clone);
+            println!("Player score {}", self.player.borrow().get_hand().score);
         }
-        if self.player.get_score() > 21 {
+        if self.player.borrow().get_score() > 21 {
             println!("Player loses");
             self.cleanup_round();
             return;
         }
-        let player_score = self.player.get_score();
+        let player_score = self.player.borrow().get_score();
 
         // Dealer makes moves
-        self.dealer.update_target_scroe(player_score);
-        while self.dealer.make_move() {
-            self.dealer.add_card(self.deck.draw());
+        self.dealer.borrow_mut().update_target_scroe(player_score);
+        while self.dealer.borrow().make_move() {
+            self.dealer.borrow_mut().add_card(self.deck.draw());
         }
 
         // Determine winner
-        let dealer_score = self.dealer.get_score();
+        let dealer_score = self.dealer.borrow().get_score();
         if dealer_score > 21 {
             println!("Player wins");
-            self.player.receive_winnings(user_bet * 2);
+            self.player.borrow_mut().receive_winnings(user_bet * 2);
         } else if dealer_score > player_score {
             println!("Player loss");
         } else {
             println!("Game ends in a draw");
-            self.player.receive_winnings(user_bet);
+            self.player.borrow_mut().receive_winnings(user_bet);
         }
         self.cleanup_round();
     }
 
     fn cleanup_round(&mut self) {
-        self.player.clear_hand();
-        self.dealer.clear_hand();
-        println!("Player balance: {}", self.player.balance);
+        self.player.borrow_mut().clear_hand();
+        self.dealer.borrow_mut().clear_hand();
+        println!("Player balance: {}", self.player.borrow().balance);
     }
 
     fn get_bet_user(&self) -> u64 {
-        print!("Enter a bet amount: ");
+        println!("Enter a bet amount: ");
         let mut input = String::new();
         stdin().read_line(&mut input).unwrap();
         let input = input.trim().parse::<u64>().unwrap_or(0u64);
@@ -356,22 +356,24 @@ impl GameRound {
 
     fn deal_initial_cards(&mut self) {
         for _ in 0..2 {
-            self.player.add_card(self.deck.draw());
-            self.dealer.add_card(self.deck.draw());
+            self.player.borrow_mut().add_card(self.deck.draw());
+            self.dealer.borrow_mut().add_card(self.deck.draw());
         }
         println!("Player hand: ");
-        self.player.get_hand().print();
-        let dealer_card = self.dealer.get_hand().cards[0];
+        self.player.borrow().get_hand().print();
+        let dealer_card = self.dealer.borrow().get_hand().cards[0];
         println!("Dealer's first card: ");
         dealer_card.print();
     }
 }
 
 fn main() {
-    let player = UserPlayer::new(Hand::new(), 1000);
-    let dealer = Dealer::new(Hand::new());
-    let mut game = GameRound::new(player, dealer, Deck::new());
-    while game.player_has_money() {
+    let player = Rc::new(RefCell::new(UserPlayer::new(Hand::new(), 1000)));
+    let dealer = Rc::new(RefCell::new(Dealer::new(Hand::new())));
+    while player.borrow().balance > 0 {
+        let player = Rc::clone(&player);
+        let dealer = Rc::clone(&dealer);
+        let mut game = GameRound::new(player, dealer, Deck::new());
         game.play();
     }
 }
