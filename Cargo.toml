@@ -7,4 +7,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.75"
+chrono = "0.4.31"
 rand = "0.8.5"
+rust_decimal = "1.32.0"
