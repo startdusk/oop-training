@@ -44,7 +44,7 @@ impl User {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MovieRating {
     NotRated,
     One,
@@ -109,13 +109,20 @@ impl RatingRegister {
             user_movies.push(movie.clone());
         }
         // 添加用户对该影片的评分
-        if let Some(movie) = self.movie_ratings.get_mut(&movie.get_id()) {
-            if let Some(movie_rating) = movie.get_mut(&user.get_id()) {
-                *movie_rating = rating;
-            } else {
-                movie.insert(user.get_id(), rating);
-            }
-        }
+        self.movie_ratings
+            .get_mut(&movie.get_id())
+            .unwrap()
+            .entry(user.get_id())
+            .and_modify(|m| *m = rating.clone())
+            .or_insert(rating);
+        // 相当于下面的代码
+        // if let Some(movie) = self.movie_ratings.get_mut(&movie.get_id()) {
+        //     if let Some(movie_rating) = movie.get_mut(&user.get_id()) {
+        //         *movie_rating = rating;
+        //     } else {
+        //         movie.insert(user.get_id(), rating);
+        //     }
+        // }
     }
 
     // 获取该影片的平均评分
