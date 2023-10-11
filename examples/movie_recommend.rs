@@ -1,4 +1,5 @@
 // 设计一个电影推荐系统
+// 人看过电影之后会给电影评分
 
 use std::collections::HashMap;
 
@@ -105,16 +106,16 @@ impl RatingRegister {
         }
 
         // 添加用户看过该影片
-        if let Some(user_movies) = self.user_movies.get_mut(&user.get_id()) {
-            user_movies.push(movie.clone());
-        }
-        // 添加用户对该影片的评分
-        self.movie_ratings
-            .get_mut(&movie.get_id())
-            .unwrap()
+        self.user_movies
             .entry(user.get_id())
-            .and_modify(|m| *m = rating.clone())
-            .or_insert(rating);
+            .and_modify(|m| m.push(movie.clone()));
+
+        // 添加用户对该影片的评分
+        self.movie_ratings.entry(movie.get_id()).and_modify(|m| {
+            m.entry(user.get_id())
+                .and_modify(|m| *m = rating.clone())
+                .or_insert(rating);
+        });
         // 相当于下面的代码
         // if let Some(movie) = self.movie_ratings.get_mut(&movie.get_id()) {
         //     if let Some(movie_rating) = movie.get_mut(&user.get_id()) {
