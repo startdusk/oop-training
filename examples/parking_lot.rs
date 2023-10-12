@@ -234,6 +234,7 @@ fn main() {
     let car = Car::new();
     let limo = Limo::new();
     let semi_truck = SemiTruck::new();
+    // 这里写得不好，带后续有空修改
     let mut driver1 = Driver::new(1, car.vehicle);
     let mut driver2 = Driver::new(2, limo.vehicle);
     let mut driver3 = Driver::new(3, semi_truck.vehicle); // 皮卡需要3个停车位, 而每层楼只有两个停车位, 所以停不下
